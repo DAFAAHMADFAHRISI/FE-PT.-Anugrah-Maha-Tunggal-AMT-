@@ -2,6 +2,29 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, FileText, CheckCircle, Clock } from 'lucide-react';
 import { api } from '../services/api';
 
+// Helper: format angka ke format desimal Indonesia (1500000 → 1.500.000)
+const formatRupiah = (value: number): string => {
+  return value.toLocaleString('id-ID');
+};
+
+// Helper: parse string format desimal kembali ke number (1.500.000 → 1500000)
+const parseRupiah = (value: string): number => {
+  return Number(value.replace(/\./g, '').replace(/[^0-9]/g, '')) || 0;
+};
+
+interface CustomerOption {
+  id: number;
+  name: string;
+}
+
+interface UnitOption {
+  id: number;
+  unit_code: string;
+  brand: string;
+  capacity_ton: number;
+  status: string;
+}
+
 export const Orders: React.FC = () => {
   const [orders, setOrders] = useState([
     {
@@ -55,20 +78,64 @@ export const Orders: React.FC = () => {
   ]);
 
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({
-    customer_id: 1,
-    customer_name: 'PT. Pelabuhan Samudera Raya',
+  const [customers, setCustomers] = useState<CustomerOption[]>([]);
+  const [units, setUnits] = useState<UnitOption[]>([]);
+  const [priceDisplay, setPriceDisplay] = useState('1.500.000');
+  const [submitError, setSubmitError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const getDefaultFormData = () => ({
+    customer_id: 0,
     po_reference: '',
     rental_duration_type: 'HARI',
     duration_value: 1,
     start_date: new Date().toISOString().split('T')[0],
     required_capacity_ton: 3.0,
-    unit_id: 1,
+    unit_id: 0,
     project_location: '',
     location_pic_name: '',
     location_pic_phone: '',
     agreed_price: 1500000,
   });
+
+  const [formData, setFormData] = useState(getDefaultFormData());
+
+  // Ambil data customers dari backend
+  useEffect(() => {
+    api.get('/customers')
+      .then((res) => {
+        if (res.data.success && res.data.data) {
+          const mapped = res.data.data.map((c: any) => ({ id: c.id, name: c.name }));
+          setCustomers(mapped);
+          if (mapped.length > 0) {
+            setFormData(prev => ({ ...prev, customer_id: mapped[0].id }));
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Ambil data units dari backend
+  useEffect(() => {
+    api.get('/units')
+      .then((res) => {
+        if (res.data.success && res.data.data) {
+          const mapped = res.data.data.map((u: any) => ({
+            id: u.id,
+            unit_code: u.unit_code,
+            brand: u.brand,
+            capacity_ton: u.capacity_ton,
+            status: u.status,
+          }));
+          setUnits(mapped);
+          const available = mapped.filter((u: UnitOption) => u.status === 'AVAILABLE');
+          if (available.length > 0) {
+            setFormData(prev => ({ ...prev, unit_id: available[0].id, required_capacity_ton: available[0].capacity_ton }));
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     // Ambil data order langsung dari backend Golang
@@ -101,44 +168,75 @@ export const Orders: React.FC = () => {
 
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newOrder = {
-      id: orders.length + 1,
-      order_number: `ORD-202609-${String(orders.length + 1).padStart(4, '0')}`,
-      customer_name: formData.customer_name,
-      order_date: new Date().toISOString().split('T')[0],
-      start_date: formData.start_date,
-      end_date: formData.start_date,
-      rental_duration_type: formData.rental_duration_type,
-      duration_value: Number(formData.duration_value),
-      project_location: formData.project_location || 'Area Proyek Klien',
-      required_capacity_ton: Number(formData.required_capacity_ton),
-      unit_code: `FL-0${formData.unit_id} (${formData.required_capacity_ton} Ton)`,
-      agreed_price: Number(formData.agreed_price),
-      status: 'PENDING',
-      po_reference: formData.po_reference || 'Pesanan Telepon/Online'
-    };
+    setSubmitError('');
+    setIsSubmitting(true);
 
-    setOrders([newOrder, ...orders]);
-    setShowModal(false);
+    // Cari nama customer berdasarkan ID
+    const selectedCustomer = customers.find(c => c.id === formData.customer_id);
+    const selectedUnit = units.find(u => u.id === formData.unit_id);
 
     try {
-      await api.post('/orders', {
+      const res = await api.post('/orders', {
         customer_id: Number(formData.customer_id),
-        order_date: newOrder.order_date,
-        start_date: newOrder.start_date,
-        rental_duration_type: newOrder.rental_duration_type,
-        duration_value: newOrder.duration_value,
-        project_location: newOrder.project_location,
+        order_date: new Date().toISOString().split('T')[0],
+        start_date: formData.start_date,
+        rental_duration_type: formData.rental_duration_type,
+        duration_value: Number(formData.duration_value),
+        project_location: formData.project_location || 'Area Proyek Klien',
         location_pic_name: formData.location_pic_name,
         location_pic_phone: formData.location_pic_phone,
-        required_capacity_ton: newOrder.required_capacity_ton,
+        required_capacity_ton: Number(formData.required_capacity_ton),
         unit_id: Number(formData.unit_id),
-        agreed_price: newOrder.agreed_price,
-        po_reference: newOrder.po_reference
+        agreed_price: Number(formData.agreed_price),
+        po_reference: formData.po_reference || 'Pesanan Telepon/Online'
       });
-    } catch (err) {
-      console.log('Order tersimpan di antarmuka lokal:', err);
+
+      if (res.data.success) {
+        // Order berhasil disimpan — tambahkan ke tabel lokal dari respons server
+        const item = res.data.data;
+        const newOrder = {
+          id: item.id,
+          order_number: item.order_number,
+          customer_name: selectedCustomer?.name || 'Customer',
+          order_date: item.order_date,
+          start_date: item.start_date,
+          end_date: item.end_date || item.start_date,
+          rental_duration_type: item.rental_duration_type,
+          duration_value: item.duration_value,
+          project_location: item.project_location,
+          required_capacity_ton: item.required_capacity_ton,
+          unit_code: selectedUnit ? `${selectedUnit.unit_code} (${selectedUnit.capacity_ton} Ton)` : 'FL-01',
+          agreed_price: item.agreed_price,
+          status: item.status,
+          po_reference: item.po_reference || '-'
+        };
+        setOrders([newOrder, ...orders]);
+        setShowModal(false);
+        setFormData(getDefaultFormData());
+        setPriceDisplay('1.500.000');
+      }
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.response?.data?.message || 'Gagal menyimpan pesanan. Periksa koneksi ke server.';
+      setSubmitError(msg);
+      console.error('Error creating order:', err);
+    } finally {
+      setIsSubmitting(false);
     }
+  };
+
+  // Handler perubahan input harga dengan format desimal otomatis
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\./g, '').replace(/[^0-9]/g, '');
+    const num = Number(raw) || 0;
+    setPriceDisplay(formatRupiah(num));
+    setFormData({ ...formData, agreed_price: num });
+  };
+
+  // Handler ketika modal dibuka — reset state
+  const openModal = () => {
+    setSubmitError('');
+    setPriceDisplay(formatRupiah(formData.agreed_price));
+    setShowModal(true);
   };
 
   return (
@@ -151,7 +249,7 @@ export const Orders: React.FC = () => {
               Pencatatan pesanan dari customer (Telepon / Formulir PO) oleh Staff Administrasi
             </p>
           </div>
-          <button className="btn-primary" onClick={() => setShowModal(true)}>
+          <button className="btn-primary" onClick={openModal}>
             <Plus size={18} />
             Input Pesanan Baru
           </button>
@@ -228,6 +326,15 @@ export const Orders: React.FC = () => {
               Input data pesanan yang diterima dari customer via telepon atau dokumen PO
             </p>
 
+            {submitError && (
+              <div style={{
+                background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b',
+                padding: '10px 14px', borderRadius: '8px', marginBottom: '16px', fontSize: '13px',
+              }}>
+                ⚠️ {submitError}
+              </div>
+            )}
+
             <form onSubmit={handleCreateOrder}>
               <div className="form-group">
                 <label>Nama Customer / Perusahaan</label>
@@ -235,14 +342,16 @@ export const Orders: React.FC = () => {
                   className="form-control"
                   value={formData.customer_id}
                   onChange={(e) => {
-                    const id = Number(e.target.value);
-                    const name = id === 1 ? 'PT. Pelabuhan Samudera Raya' : id === 2 ? 'PT. Mega Baja Mandiri' : 'CV. Makmur Jaya Abadi';
-                    setFormData({ ...formData, customer_id: id, customer_name: name });
+                    setFormData({ ...formData, customer_id: Number(e.target.value) });
                   }}
+                  required
                 >
-                  <option value={1}>PT. Pelabuhan Samudera Raya</option>
-                  <option value={2}>PT. Mega Baja Mandiri</option>
-                  <option value={3}>CV. Makmur Jaya Abadi</option>
+                  {customers.length === 0 && (
+                    <option value={0} disabled>Memuat data customer...</option>
+                  )}
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
                 </select>
               </div>
 
@@ -316,10 +425,16 @@ export const Orders: React.FC = () => {
                     className="form-control"
                     value={formData.unit_id}
                     onChange={(e) => setFormData({ ...formData, unit_id: Number(e.target.value) })}
+                    required
                   >
-                    <option value={1}>FL-01 - Toyota 3.0T (READY)</option>
-                    <option value={3}>FL-03 - Mitsubishi 7.0T (READY)</option>
-                    <option value={4}>FL-04 - Toyota Electric 2.5T (READY)</option>
+                    {units.length === 0 && (
+                      <option value={0} disabled>Memuat data unit...</option>
+                    )}
+                    {units.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.unit_code} - {u.brand} {u.capacity_ton}T ({u.status === 'AVAILABLE' ? 'READY' : u.status})
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -350,10 +465,12 @@ export const Orders: React.FC = () => {
                 <div className="form-group">
                   <label>Total Kesepakatan Biaya Sewa (Rp)</label>
                   <input 
-                    type="number" 
-                    className="form-control" 
-                    value={formData.agreed_price}
-                    onChange={(e) => setFormData({ ...formData, agreed_price: Number(e.target.value) })}
+                    type="text" 
+                    className="form-control"
+                    value={priceDisplay}
+                    onChange={handlePriceChange}
+                    placeholder="Contoh: 1.500.000"
+                    style={{ fontWeight: 600 }}
                   />
                 </div>
               </div>
@@ -363,11 +480,12 @@ export const Orders: React.FC = () => {
                   type="button" 
                   className="btn-secondary" 
                   onClick={() => setShowModal(false)}
+                  disabled={isSubmitting}
                 >
                   Batal
                 </button>
-                <button type="submit" className="btn-primary">
-                  Simpan Pesanan ke Sistem
+                <button type="submit" className="btn-primary" disabled={isSubmitting}>
+                  {isSubmitting ? 'Menyimpan...' : 'Simpan Pesanan ke Sistem'}
                 </button>
               </div>
             </form>
@@ -377,3 +495,4 @@ export const Orders: React.FC = () => {
     </div>
   );
 };
+
