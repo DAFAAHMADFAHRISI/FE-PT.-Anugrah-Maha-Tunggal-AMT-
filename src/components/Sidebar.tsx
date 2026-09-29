@@ -53,14 +53,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage })
   const { user, logout } = useAuth();
   const userRole = user?.role ?? '';
 
-  // Filter menu sesuai role
-  const visibleMenus = ALL_MENU_ITEMS.filter(item => item.roles.includes(userRole));
+  // Filter menu sesuai role (untuk admin_staff sementara hanya tampilkan menu Surat Jalan saja)
+  const visibleMenus = userRole === 'admin_staff'
+    ? [{ id: 'surat-jalan', label: 'Surat Jalan', icon: Truck, roles: ['admin_staff'] }]
+    : ALL_MENU_ITEMS.filter(item => item.roles.includes(userRole));
 
   // Group menu by section
   const sections: { label: string; items: MenuItem[] }[] = [];
   const addedSections: string[] = [];
   for (const item of visibleMenus) {
-    const sectionLabel = SECTION_LABELS[item.id] ?? 'Menu';
+    const sectionLabel = userRole === 'admin_staff' ? 'Admin' : (SECTION_LABELS[item.id] ?? 'Menu');
     if (!addedSections.includes(sectionLabel)) {
       addedSections.push(sectionLabel);
       sections.push({ label: sectionLabel, items: [] });
@@ -79,15 +81,30 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage })
       {/* ── Logo & Brand ── */}
       <div className="sidebar-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{
-            background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-            borderRadius: '10px', width: '38px', height: '38px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#fff', fontWeight: 800, fontSize: '12px', letterSpacing: '0.5px',
-            boxShadow: '0 2px 8px rgba(37, 99, 235, 0.4)',
-          }}>
-            AMT
-          </div>
+          <svg
+            viewBox="0 0 120 120"
+            width="42"
+            height="42"
+            style={{ flexShrink: 0 }}
+            aria-label="Logo PT. Anugrah Maha Tunggal"
+          >
+            {/* Red Star */}
+            <polygon
+              points="60,5 73,42 112,42 80,65 90,103 60,80 30,103 40,65 8,42 47,42"
+              fill="#C23B2A"
+            />
+            {/* AMT Text */}
+            <text
+              x="60" y="68"
+              textAnchor="middle"
+              fill="#fff"
+              fontWeight="800"
+              fontStyle="italic"
+              fontFamily="'Segoe UI', Arial, sans-serif"
+              fontSize="26"
+              letterSpacing="1"
+            >AMT</text>
+          </svg>
           <div>
             <div className="company-title">PT. ANUGRAH MAHA TUNGGAL</div>
             <div className="company-subtitle">Integrated ERP System</div>

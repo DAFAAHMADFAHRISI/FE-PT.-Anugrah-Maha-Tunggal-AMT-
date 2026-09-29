@@ -243,14 +243,24 @@ export const SuratJalan: React.FC = () => {
           <div className="surat-jalan-document">
             {/* Header Dokumen */}
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #000', paddingBottom: '12px', marginBottom: '16px' }}>
-              <div>
-                <h2 style={{ fontSize: '20px', fontWeight: 800, margin: 0 }}>PT. ANUGRAH MAHA TUNGGAL</h2>
-                <p style={{ margin: '4px 0 0', fontSize: '12px' }}>
-                  Layanan Penyewaan Alat Berat, Forklift & Logistik Terpadu
-                </p>
-                <p style={{ margin: '2px 0 0', fontSize: '11px' }}>
-                  Pool & Workshop: Jl. Raya Industri No. 88 | Telp: (021) 8899-7711 | Email: ops@anugrahmahatunggal.com
-                </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <img
+                  src="/logo-amt.jpg"
+                  alt="Logo AMT"
+                  style={{
+                    width: '60px', height: '60px',
+                    objectFit: 'contain',
+                  }}
+                />
+                <div>
+                  <h2 style={{ fontSize: '20px', fontWeight: 800, margin: 0 }}>PT. ANUGRAH MAHA TUNGGAL</h2>
+                  <p style={{ margin: '4px 0 0', fontSize: '12px' }}>
+                    Layanan Penyewaan Alat Berat, Forklift & Logistik Terpadu
+                  </p>
+                  <p style={{ margin: '2px 0 0', fontSize: '11px' }}>
+                    Pool & Workshop: Jl. Raya Industri No. 88 | Telp: (021) 8899-7711 | Email: ops@anugrahmahatunggal.com
+                  </p>
+                </div>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, textDecoration: 'underline' }}>SURAT JALAN OPERASIONAL</h3>

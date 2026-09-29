@@ -11,6 +11,7 @@ import { ForkliftUnits } from './pages/ForkliftUnits';
 import { Customers } from './pages/Customers';
 import { UsersPage } from './pages/Users';
 import BerandaDirektur from './pages/Direktur/Beranda';
+import SuratJalanAdmin from './pages/admin/suratjalan';
 
 // ── Auth Page ─────────────────────────────────────────────────
 import Login from './pages/Auth/login';
@@ -44,7 +45,7 @@ const LoadingScreen: React.FC = () => (
 // ── Default home page per role ────────────────────────────────
 const DEFAULT_PAGE_BY_ROLE: Record<string, string> = {
   direktur:    'beranda-direktur',
-  admin_staff: 'dashboard',
+  admin_staff: 'surat-jalan',
   operasional: 'surat-jalan',
   finance:     'orders',
 };
@@ -79,7 +80,12 @@ const AppContent: React.FC = () => {
       case 'orders':
         return <Orders />;
       case 'surat-jalan':
+        if (user?.role === 'admin_staff') {
+          return <SuratJalanAdmin />;
+        }
         return <SuratJalan />;
+      case 'surat-jalan-admin':
+        return <SuratJalanAdmin />;
       case 'units':
         return <ForkliftUnits />;
       case 'customers':
@@ -90,6 +96,7 @@ const AppContent: React.FC = () => {
       default:
         // Fallback ke halaman default role
         if (user?.role === 'direktur') return <BerandaDirektur />;
+        if (user?.role === 'admin_staff') return <SuratJalanAdmin />;
         return <Dashboard />;
     }
   };
