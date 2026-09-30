@@ -52,8 +52,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return false;
     } catch (err: any) {
-      // Lempar error agar halaman login bisa menampilkan pesan error spesifik
-      const message = err?.response?.data?.message || 'Terjadi kesalahan pada server';
+      // Lempar error spesifik dari backend atau jaringan
+      if (err?.response?.data?.message) {
+        throw new Error(err.response.data.message);
+      }
+      if (!err?.response) {
+        throw new Error('Gagal terhubung ke server. Pastikan backend sudah aktif.');
+      }
+      const message = err?.response?.data?.error || err?.message || 'Terjadi kesalahan pada server';
       throw new Error(message);
     }
   };
