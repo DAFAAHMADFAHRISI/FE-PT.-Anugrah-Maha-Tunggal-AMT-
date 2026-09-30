@@ -119,6 +119,18 @@
   flex-shrink: 0;
 }
 
+.login-logo-img {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  object-fit: contain;
+  background: #ffffff;
+  padding: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+}
+
 .login-company-name {
   font-size: 18px;
   font-weight: 800;
@@ -207,6 +219,22 @@
 
 .login-form-header {
   margin-bottom: 32px;
+}
+
+.login-form-logo-box {
+  margin-bottom: 20px;
+  display: inline-flex;
+}
+
+.login-form-logo {
+  width: 58px;
+  height: 58px;
+  border-radius: 14px;
+  object-fit: contain;
+  background: #ffffff;
+  padding: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  border: 1.5px solid #e2e8f0;
 }
 
 .login-title {

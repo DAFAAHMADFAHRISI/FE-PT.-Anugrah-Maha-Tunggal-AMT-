@@ -25,8 +25,8 @@ const Login: React.FC = () => {
       if (!success) {
         setError('Username atau password salah. Silakan coba lagi.');
       }
-    } catch {
-      setError('Gagal terhubung ke server. Pastikan backend sudah aktif.');
+    } catch (err: any) {
+      setError(err?.message || 'Gagal terhubung ke server. Pastikan backend sudah aktif.');
     } finally {
       setIsLoading(false);
     }
@@ -47,7 +47,11 @@ const Login: React.FC = () => {
         <div className="login-branding">
           <div className="login-branding-content">
             <div className="login-logo-area">
-              <div className="login-logo-icon">🏗️</div>
+              <img
+                src="/logo-amt.jpg"
+                alt="Logo PT. Anugrah Maha Tunggal"
+                className="login-logo-img"
+              />
               <div>
                 <h1 className="login-company-name">PT. Anugrah Maha Tunggal</h1>
                 <p className="login-company-tagline">Solusi Sewa Alat Berat Terpercaya</p>
@@ -89,6 +93,13 @@ const Login: React.FC = () => {
         <div className="login-form-panel">
           <div className="login-form-container">
             <div className="login-form-header">
+              <div className="login-form-logo-box">
+                <img
+                  src="/logo-amt.jpg"
+                  alt="Logo PT. Anugrah Maha Tunggal"
+                  className="login-form-logo"
+                />
+              </div>
               <h2 className="login-title">Selamat Datang Kembali</h2>
               <p className="login-subtitle">Masuk ke akun Anda untuk melanjutkan</p>
             </div>
