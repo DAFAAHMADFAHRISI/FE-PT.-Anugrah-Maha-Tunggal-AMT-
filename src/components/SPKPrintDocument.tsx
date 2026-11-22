@@ -46,7 +46,7 @@ export const SPKPrintDocument: React.FC<SPKPrintDocumentProps> = ({ spk, onBack 
       </div>
 
       {/* Printable Paper Area */}
-      <div className="print-area" style={{
+      <div className="print-area spk-print-area" style={{
         background: '#ffffff', padding: '40px 48px', borderRadius: '8px',
         boxShadow: '0 4px 20px rgba(0,0,0,0.08)', border: '1px solid #cbd5e1',
         fontFamily: "'Times New Roman', Times, serif", color: '#000000'
@@ -54,7 +54,7 @@ export const SPKPrintDocument: React.FC<SPKPrintDocumentProps> = ({ spk, onBack 
         {/* Header / Kop Surat PT. Anugrah Maha Tunggal */}
         <div style={{
           display: 'flex', alignItems: 'center', borderBottom: '3px double #000000',
-          paddingBottom: '16px', marginBottom: '24px', gap: '20px'
+          paddingBottom: '10px', marginBottom: '14px', gap: '16px'
         }}>
           <div style={{ width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg viewBox="0 0 120 120" width="75" height="75">
@@ -76,7 +76,7 @@ export const SPKPrintDocument: React.FC<SPKPrintDocumentProps> = ({ spk, onBack 
         </div>
 
         {/* Judul Dokumen */}
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '14px' }}>
           <h2 style={{
             margin: 0, fontSize: '16px', fontWeight: 'bold', textDecoration: 'underline',
             textTransform: 'uppercase', letterSpacing: '0.5px'
@@ -90,36 +90,36 @@ export const SPKPrintDocument: React.FC<SPKPrintDocumentProps> = ({ spk, onBack 
 
         {/* Informasi Rujukan Sistem SPK SAW */}
         <div style={{
-          padding: '10px 14px', background: '#f8fafc', border: '1px solid #94a3b8',
-          fontSize: '11px', fontFamily: 'Arial, sans-serif', marginBottom: '20px', borderRadius: '4px'
+          padding: '8px 12px', background: '#f8fafc', border: '1px solid #94a3b8',
+          fontSize: '10px', fontFamily: 'Arial, sans-serif', marginBottom: '12px', borderRadius: '4px'
         }}>
           <strong>Rujukan Analytic Engine SAW (Simple Additive Weighting):</strong> Dokumen ini diterbitkan otomatis berdasarkan kalkulasi prioritas risiko keausan armada. Unit teridentifikasi dalam status prioritas tinggi (Skor Risiko Vi = {spk.risk_score.toFixed(4)}).
         </div>
 
         {/* Tabel Data Unit & Penugasan Mekanik */}
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px', fontSize: '13px' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '12px', fontSize: '12px' }}>
           <tbody>
             <tr>
-              <td style={{ width: '25%', padding: '6px 8px', fontWeight: 'bold', border: '1px solid #999' }}>Kode Unit / Lambung</td>
-              <td style={{ width: '25%', padding: '6px 8px', border: '1px solid #999' }}>{spk.unit?.unit_code || '-'}</td>
-              <td style={{ width: '25%', padding: '6px 8px', fontWeight: 'bold', border: '1px solid #999' }}>Tanggal Rencana Servis</td>
-              <td style={{ width: '25%', padding: '6px 8px', border: '1px solid #999' }}>{spk.scheduled_date}</td>
+              <td style={{ width: '25%', padding: '5px 8px', fontWeight: 'bold', border: '1px solid #999' }}>Kode Unit / Lambung</td>
+              <td style={{ width: '25%', padding: '5px 8px', border: '1px solid #999' }}>{spk.unit?.unit_code || '-'}</td>
+              <td style={{ width: '25%', padding: '5px 8px', fontWeight: 'bold', border: '1px solid #999' }}>Tanggal Rencana Servis</td>
+              <td style={{ width: '25%', padding: '5px 8px', border: '1px solid #999' }}>{spk.scheduled_date}</td>
             </tr>
             <tr>
-              <td style={{ padding: '6px 8px', fontWeight: 'bold', border: '1px solid #999' }}>Merk Pabrikan / Model</td>
-              <td style={{ padding: '6px 8px', border: '1px solid #999' }}>{spk.unit?.brand} ({spk.unit?.model || '-'})</td>
-              <td style={{ padding: '6px 8px', fontWeight: 'bold', border: '1px solid #999' }}>Kapasitas Tonase</td>
-              <td style={{ padding: '6px 8px', border: '1px solid #999' }}>{spk.unit?.capacity_ton} Ton ({spk.unit?.fuel_type})</td>
+              <td style={{ padding: '5px 8px', fontWeight: 'bold', border: '1px solid #999' }}>Merk Pabrikan / Model</td>
+              <td style={{ padding: '5px 8px', border: '1px solid #999' }}>{spk.unit?.brand} ({spk.unit?.model || '-'})</td>
+              <td style={{ padding: '5px 8px', fontWeight: 'bold', border: '1px solid #999' }}>Kapasitas Tonase</td>
+              <td style={{ padding: '5px 8px', border: '1px solid #999' }}>{spk.unit?.capacity_ton} Ton ({spk.unit?.fuel_type})</td>
             </tr>
             <tr>
-              <td style={{ padding: '6px 8px', fontWeight: 'bold', border: '1px solid #999' }}>Total Hour Meter (C1)</td>
-              <td style={{ padding: '6px 8px', border: '1px solid #999' }}>{spk.unit?.hour_meter || 0} Jam</td>
-              <td style={{ padding: '6px 8px', fontWeight: 'bold', border: '1px solid #999' }}>Frekuensi Kerusakan (C3)</td>
-              <td style={{ padding: '6px 8px', border: '1px solid #999' }}>{spk.unit?.breakdown_frequency || 0} Kali</td>
+              <td style={{ padding: '5px 8px', fontWeight: 'bold', border: '1px solid #999' }}>Total Hour Meter (C1)</td>
+              <td style={{ padding: '5px 8px', border: '1px solid #999' }}>{spk.unit?.hour_meter || 0} Jam</td>
+              <td style={{ padding: '5px 8px', fontWeight: 'bold', border: '1px solid #999' }}>Frekuensi Kerusakan (C3)</td>
+              <td style={{ padding: '5px 8px', border: '1px solid #999' }}>{spk.unit?.breakdown_frequency || 0} Kali</td>
             </tr>
             <tr>
-              <td style={{ padding: '6px 8px', fontWeight: 'bold', border: '1px solid #999' }}>Mekanik Penanggung Jawab</td>
-              <td colSpan={3} style={{ padding: '6px 8px', border: '1px solid #999', fontWeight: 'bold' }}>
+              <td style={{ padding: '5px 8px', fontWeight: 'bold', border: '1px solid #999' }}>Mekanik Penanggung Jawab</td>
+              <td colSpan={3} style={{ padding: '5px 8px', border: '1px solid #999', fontWeight: 'bold' }}>
                 {spk.mechanic_name}
               </td>
             </tr>
@@ -127,31 +127,31 @@ export const SPKPrintDocument: React.FC<SPKPrintDocumentProps> = ({ spk, onBack 
         </table>
 
         {/* Instruksi & Target Komponen Perbaikan */}
-        <div style={{ marginBottom: '20px' }}>
-          <h4 style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 'bold', textTransform: 'uppercase' }}>
+        <div style={{ marginBottom: '12px' }}>
+          <h4 style={{ margin: '0 0 6px', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase' }}>
             A. Uraian Pekerjaan / Target Komponen Perbaikan:
           </h4>
           <div style={{
-            padding: '12px 14px', border: '1px solid #999', minHeight: '60px',
-            fontSize: '13px', lineHeight: '1.5', background: '#fafafa'
+            padding: '8px 12px', border: '1px solid #999', minHeight: '40px',
+            fontSize: '12px', lineHeight: '1.4', background: '#fafafa'
           }}>
             {spk.complaint_notes}
           </div>
         </div>
 
         {/* Checklist Pengerjaan Bengkel */}
-        <div style={{ marginBottom: '24px' }}>
-          <h4 style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 'bold', textTransform: 'uppercase' }}>
+        <div style={{ marginBottom: '14px' }}>
+          <h4 style={{ margin: '0 0 6px', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase' }}>
             B. Checklist Uji Kelayakan Standar Operasional:
           </h4>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
             <thead>
               <tr style={{ background: '#f1f5f9' }}>
-                <th style={{ border: '1px solid #999', padding: '6px', width: '30px', textAlign: 'center' }}>No</th>
-                <th style={{ border: '1px solid #999', padding: '6px', textAlign: 'left' }}>Item Pengecekan</th>
-                <th style={{ border: '1px solid #999', padding: '6px', width: '90px', textAlign: 'center' }}>Baik (OK)</th>
-                <th style={{ border: '1px solid #999', padding: '6px', width: '90px', textAlign: 'center' }}>Perlu Ganti</th>
-                <th style={{ border: '1px solid #999', padding: '6px', textAlign: 'left' }}>Catatan Teknisi</th>
+                <th style={{ border: '1px solid #999', padding: '4px', width: '28px', textAlign: 'center' }}>No</th>
+                <th style={{ border: '1px solid #999', padding: '4px', textAlign: 'left' }}>Item Pengecekan</th>
+                <th style={{ border: '1px solid #999', padding: '4px', width: '70px', textAlign: 'center' }}>Baik (OK)</th>
+                <th style={{ border: '1px solid #999', padding: '4px', width: '70px', textAlign: 'center' }}>Perlu Ganti</th>
+                <th style={{ border: '1px solid #999', padding: '4px', textAlign: 'left' }}>Catatan Teknisi</th>
               </tr>
             </thead>
             <tbody>
@@ -164,11 +164,11 @@ export const SPKPrintDocument: React.FC<SPKPrintDocumentProps> = ({ spk, onBack 
                 'Kondisi Tekanan & Keausan Ban Depan/Belakang',
               ].map((item, idx) => (
                 <tr key={idx}>
-                  <td style={{ border: '1px solid #999', padding: '5px', textAlign: 'center' }}>{idx + 1}</td>
-                  <td style={{ border: '1px solid #999', padding: '5px' }}>{item}</td>
-                  <td style={{ border: '1px solid #999', padding: '5px', textAlign: 'center' }}>[ &nbsp; ]</td>
-                  <td style={{ border: '1px solid #999', padding: '5px', textAlign: 'center' }}>[ &nbsp; ]</td>
-                  <td style={{ border: '1px solid #999', padding: '5px' }}></td>
+                  <td style={{ border: '1px solid #999', padding: '3px', textAlign: 'center' }}>{idx + 1}</td>
+                  <td style={{ border: '1px solid #999', padding: '3px' }}>{item}</td>
+                  <td style={{ border: '1px solid #999', padding: '3px', textAlign: 'center' }}>[ &nbsp; ]</td>
+                  <td style={{ border: '1px solid #999', padding: '3px', textAlign: 'center' }}>[ &nbsp; ]</td>
+                  <td style={{ border: '1px solid #999', padding: '3px' }}></td>
                 </tr>
               ))}
             </tbody>
@@ -178,38 +178,38 @@ export const SPKPrintDocument: React.FC<SPKPrintDocumentProps> = ({ spk, onBack 
         {/* Area Tanda Tangan */}
         <div style={{
           display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', textAlign: 'center',
-          marginTop: '30px', pageBreakInside: 'avoid'
+          marginTop: '16px', pageBreakInside: 'avoid'
         }}>
           <div>
-            <p style={{ margin: 0, fontSize: '12px' }}>Diterbitkan Oleh,</p>
-            <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#666' }}>Admin Operasional</p>
-            <div style={{ height: '70px' }} />
-            <p style={{ margin: 0, fontSize: '12px', fontWeight: 'bold', textDecoration: 'underline' }}>
+            <p style={{ margin: 0, fontSize: '11px' }}>Diterbitkan Oleh,</p>
+            <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#666' }}>Admin Operasional</p>
+            <div style={{ height: '50px' }} />
+            <p style={{ margin: 0, fontSize: '11px', fontWeight: 'bold', textDecoration: 'underline' }}>
               ( Dafa Ahmad F. )
             </p>
           </div>
 
           <div>
-            <p style={{ margin: 0, fontSize: '12px' }}>Mekanik Pelaksana,</p>
-            <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#666' }}>Kepala Bengkel</p>
-            <div style={{ height: '70px' }} />
-            <p style={{ margin: 0, fontSize: '12px', fontWeight: 'bold', textDecoration: 'underline' }}>
+            <p style={{ margin: 0, fontSize: '11px' }}>Mekanik Pelaksana,</p>
+            <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#666' }}>Kepala Bengkel</p>
+            <div style={{ height: '50px' }} />
+            <p style={{ margin: 0, fontSize: '11px', fontWeight: 'bold', textDecoration: 'underline' }}>
               ( {spk.mechanic_name} )
             </p>
           </div>
 
           <div>
-            <p style={{ margin: 0, fontSize: '12px' }}>Mengetahui & Menyetujui,</p>
-            <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#666' }}>Direktur Utama</p>
-            <div style={{ height: '70px' }} />
-            <p style={{ margin: 0, fontSize: '12px', fontWeight: 'bold', textDecoration: 'underline' }}>
+            <p style={{ margin: 0, fontSize: '11px' }}>Mengetahui & Menyetujui,</p>
+            <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#666' }}>Direktur Utama</p>
+            <div style={{ height: '50px' }} />
+            <p style={{ margin: 0, fontSize: '11px', fontWeight: 'bold', textDecoration: 'underline' }}>
               ( Ghofur )
             </p>
           </div>
         </div>
 
         {/* Footer Nota */}
-        <div style={{ marginTop: '24px', paddingTop: '10px', borderTop: '1px dashed #999', fontSize: '10px', color: '#666', textAlign: 'center' }}>
+        <div style={{ marginTop: '14px', paddingTop: '8px', borderTop: '1px dashed #999', fontSize: '9px', color: '#666', textAlign: 'center' }}>
           Dokumen ini merupakan Surat Perintah Kerja resmi bengkel PT. Anugrah Maha Tunggal. Harap lembar verifikasi dikembalikan ke bagian admin operasional setelah uji jalan (trial run) dinyatakan lolos.
         </div>
       </div>

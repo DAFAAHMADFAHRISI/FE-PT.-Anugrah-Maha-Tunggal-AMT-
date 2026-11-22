@@ -402,8 +402,12 @@ body {
   gap: 16px;
 }
 
-/* PRINT PREVIEW SURAT JALAN */
+/* PRINT PREVIEW SURAT JALAN & SPK */
 @media print {
+  @page {
+    size: A4;
+    margin: 10mm 12mm;
+  }
   body * {
     visibility: hidden;
   }
@@ -416,7 +420,12 @@ body {
     top: 0;
     width: 100%;
     margin: 0;
-    padding: 20px;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  .spk-print-area {
+    font-size: 11px !important;
   }
   .no-print {
     display: none !important;
