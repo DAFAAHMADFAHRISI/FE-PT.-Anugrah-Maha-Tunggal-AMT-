@@ -15,7 +15,6 @@ import {
   Calendar,
   Eye,
   Check,
-  RefreshCw,
   Info
 } from 'lucide-react';
 import { api } from '../../services/api';
@@ -478,14 +477,6 @@ export const SuratJalanAdmin: React.FC = () => {
           </div>
 
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button
-              className="btn-secondary"
-              onClick={loadDeliveryLetters}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-              title="Refresh Data"
-            >
-              <RefreshCw size={15} /> Refresh
-            </button>
             <button
               className="btn-primary"
               onClick={() => setIsCreateModalOpen(true)}

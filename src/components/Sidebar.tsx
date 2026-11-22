@@ -10,6 +10,10 @@ import {
   LogOut,
   Home,
   BarChart2,
+  Award,
+  Sliders,
+  Wrench,
+  ClipboardList,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -30,9 +34,15 @@ const ALL_MENU_ITEMS: MenuItem[] = [
   // ── Direktur Exclusive ──
   { id: 'beranda-direktur', label: 'Beranda Eksekutif', icon: Home,            roles: ['direktur'] },
 
+  // ── SPK Maintenance SAW ──
+  { id: 'saw-dashboard',       label: 'SPK Maintenance (SAW)', icon: Award,        roles: ['direktur', 'admin_staff', 'operasional'] },
+  { id: 'operational-logs',    label: 'Log Operasional Armada', icon: FileText,    roles: ['direktur', 'admin_staff', 'operasional'] },
+  { id: 'maintenance-orders',  label: 'Daftar SPK Bengkel',    icon: Wrench,       roles: ['direktur', 'admin_staff', 'operasional'] },
+  { id: 'saw-weights',         label: 'Pengaturan Bobot SAW',  icon: Sliders,      roles: ['direktur'] },
+
   // ── Shared / Multi-role ──
   { id: 'dashboard',        label: 'Dashboard Umum',   icon: LayoutDashboard,  roles: ['admin_staff', 'operasional', 'finance'] },
-  { id: 'orders',           label: 'Pesanan Sewa (PO)', icon: FileText,         roles: ['direktur', 'admin_staff', 'operasional', 'finance'] },
+  { id: 'orders',           label: 'Pesanan Sewa (PO)', icon: ClipboardList,   roles: ['direktur', 'admin_staff', 'operasional', 'finance'] },
   { id: 'surat-jalan',      label: 'Surat Jalan & Operasional', icon: Truck,    roles: ['direktur', 'admin_staff', 'operasional'] },
   { id: 'units',            label: 'Master Unit Forklift', icon: HardHat,       roles: ['direktur', 'admin_staff', 'operasional'] },
   { id: 'customers',        label: 'Master Pelanggan', icon: Building2,         roles: ['direktur', 'admin_staff', 'finance'] },
@@ -40,29 +50,31 @@ const ALL_MENU_ITEMS: MenuItem[] = [
 ];
 
 const SECTION_LABELS: Record<string, string> = {
-  'beranda-direktur': 'Eksekutif',
-  'dashboard':        'Operasional',
-  'orders':           'Operasional',
-  'surat-jalan':      'Operasional',
-  'units':            'Master Data',
-  'customers':        'Master Data',
-  'users':            'Administrasi',
+  'beranda-direktur':   'Eksekutif',
+  'saw-dashboard':      'SPK Maintenance',
+  'operational-logs':   'SPK Maintenance',
+  'maintenance-orders': 'SPK Maintenance',
+  'saw-weights':        'SPK Maintenance',
+  'dashboard':          'Operasional',
+  'orders':             'Operasional',
+  'surat-jalan':        'Operasional',
+  'units':              'Master Data',
+  'customers':          'Master Data',
+  'users':              'Administrasi',
 };
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
   const { user, logout } = useAuth();
   const userRole = user?.role ?? '';
 
-  // Filter menu sesuai role (untuk admin_staff sementara hanya tampilkan menu Surat Jalan saja)
-  const visibleMenus = userRole === 'admin_staff'
-    ? [{ id: 'surat-jalan', label: 'Surat Jalan', icon: Truck, roles: ['admin_staff'] }]
-    : ALL_MENU_ITEMS.filter(item => item.roles.includes(userRole));
+  // Filter menu sesuai role pengguna
+  const visibleMenus = ALL_MENU_ITEMS.filter((item) => item.roles.includes(userRole));
 
   // Group menu by section
   const sections: { label: string; items: MenuItem[] }[] = [];
   const addedSections: string[] = [];
   for (const item of visibleMenus) {
-    const sectionLabel = userRole === 'admin_staff' ? 'Admin' : (SECTION_LABELS[item.id] ?? 'Menu');
+    const sectionLabel = SECTION_LABELS[item.id] ?? 'Menu';
     if (!addedSections.includes(sectionLabel)) {
       addedSections.push(sectionLabel);
       sections.push({ label: sectionLabel, items: [] });

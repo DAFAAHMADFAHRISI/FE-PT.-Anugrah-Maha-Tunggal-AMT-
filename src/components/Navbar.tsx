@@ -29,17 +29,6 @@ export const Navbar: React.FC = () => {
         <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>
           Tata Kelola Data Terintegrasi
         </h2>
-        <span style={{
-          background: '#eff6ff',
-          color: '#1d4ed8',
-          fontSize: '11px',
-          fontWeight: 600,
-          padding: '4px 10px',
-          borderRadius: '9999px',
-          border: '1px solid #bfdbfe'
-        }}>
-          Proyek Akhir Semester 7
-        </span>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>

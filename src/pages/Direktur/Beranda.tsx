@@ -156,10 +156,6 @@ const BerandaDirektur: React.FC = () => {
             </p>
           </div>
         </div>
-        <button className="beranda-refresh-btn" onClick={fetchDashboard} disabled={loading} id="refresh-dashboard-btn">
-          <span className={loading ? 'beranda-spin' : ''}>🔄</span>
-          <span>{loading ? 'Memuat...' : 'Perbarui Data'}</span>
-        </button>
       </div>
 
       {/* ── Error State ── */}
