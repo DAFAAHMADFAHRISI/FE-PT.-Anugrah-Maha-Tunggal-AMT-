@@ -64,7 +64,14 @@ const AppContent: React.FC = () => {
   const defaultPage = user?.role ? (DEFAULT_PAGE_BY_ROLE[user.role] ?? 'dashboard') : 'dashboard';
   const [currentPage, setCurrentPage] = useState<string>(defaultPage);
 
-  // Saat user berubah (login baru), arahkan ke halaman default role-nya
+  // Saat user berhasil login atau role berubah, otomatis arahkan ke halaman utama sesuai role
+  React.useEffect(() => {
+    if (user?.role && DEFAULT_PAGE_BY_ROLE[user.role]) {
+      setCurrentPage(DEFAULT_PAGE_BY_ROLE[user.role]);
+    }
+  }, [user?.role]);
+
+  // Saat user memilih menu secara manual
   const handleSetCurrentPage = (page: string) => setCurrentPage(page);
 
   // ── Loading saat cek sesi ──
