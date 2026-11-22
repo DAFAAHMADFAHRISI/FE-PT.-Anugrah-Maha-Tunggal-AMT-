@@ -13,6 +13,12 @@ import { UsersPage } from './pages/Users';
 import BerandaDirektur from './pages/Direktur/Beranda';
 import SuratJalanAdmin from './pages/admin/suratjalan';
 
+// ── Modul SPK Pemeliharaan SAW ────────────────────────────────
+import { SAWDashboard } from './pages/SAWDashboard';
+import { OperationalLogs } from './pages/OperationalLogs';
+import { SAWWeights } from './pages/SAWWeights';
+import { MaintenanceOrders } from './pages/MaintenanceOrders';
+
 // ── Auth Page ─────────────────────────────────────────────────
 import Login from './pages/Auth/login';
 
@@ -73,6 +79,16 @@ const AppContent: React.FC = () => {
       // ── Direktur ──
       case 'beranda-direktur':
         return <BerandaDirektur />;
+
+      // ── SPK Pemeliharaan SAW ──
+      case 'saw-dashboard':
+        return <SAWDashboard />;
+      case 'operational-logs':
+        return <OperationalLogs />;
+      case 'saw-weights':
+        return <SAWWeights />;
+      case 'maintenance-orders':
+        return <MaintenanceOrders />;
 
       // ── Shared / Admin Staff ──
       case 'dashboard':
