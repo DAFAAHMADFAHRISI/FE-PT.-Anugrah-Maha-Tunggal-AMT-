@@ -31,31 +31,30 @@ type MenuItem = {
 };
 
 const ALL_MENU_ITEMS: MenuItem[] = [
-  // ── Direktur Exclusive ──
-  { id: 'beranda-direktur', label: 'Beranda Eksekutif', icon: Home,            roles: ['direktur'] },
+  // ── Dashboard Utama (Semua Role) ──
+  { id: 'beranda-direktur',    label: 'Dashboard Utama',        icon: Home,            roles: ['direktur', 'admin_staff', 'operasional', 'finance'] },
 
   // ── SPK Maintenance SAW ──
-  { id: 'saw-dashboard',       label: 'SPK Maintenance (SAW)', icon: Award,        roles: ['direktur', 'admin_staff', 'operasional'] },
-  { id: 'operational-logs',    label: 'Log Operasional Armada', icon: FileText,    roles: ['direktur', 'admin_staff', 'operasional'] },
-  { id: 'maintenance-orders',  label: 'Daftar SPK Bengkel',    icon: Wrench,       roles: ['direktur', 'admin_staff', 'operasional'] },
-  { id: 'saw-weights',         label: 'Pengaturan Bobot SAW',  icon: Sliders,      roles: ['direktur'] },
+  { id: 'saw-dashboard',       label: 'SPK Maintenance (SAW)', icon: Award,           roles: ['direktur', 'admin_staff', 'operasional'] },
+  { id: 'operational-logs',    label: 'Log Operasional Armada', icon: FileText,        roles: ['direktur', 'admin_staff', 'operasional'] },
+  { id: 'maintenance-orders',  label: 'Daftar SPK Bengkel',    icon: Wrench,          roles: ['direktur', 'admin_staff', 'operasional'] },
+  { id: 'saw-weights',         label: 'Pengaturan Bobot SAW',  icon: Sliders,         roles: ['direktur'] },
 
-  // ── Shared / Multi-role ──
-  { id: 'dashboard',        label: 'Dashboard Umum',   icon: LayoutDashboard,  roles: ['admin_staff', 'operasional', 'finance'] },
-  { id: 'orders',           label: 'Pesanan Sewa (PO)', icon: ClipboardList,   roles: ['direktur', 'admin_staff', 'operasional', 'finance'] },
-  { id: 'surat-jalan',      label: 'Surat Jalan & Operasional', icon: Truck,    roles: ['direktur', 'admin_staff', 'operasional'] },
-  { id: 'units',            label: 'Master Unit Forklift', icon: HardHat,       roles: ['direktur', 'admin_staff', 'operasional'] },
-  { id: 'customers',        label: 'Master Pelanggan', icon: Building2,         roles: ['direktur', 'admin_staff', 'finance'] },
-  { id: 'users',            label: 'Kelola Users & Role', icon: Users,          roles: ['direktur', 'admin_staff'] },
+  // ── Operasional & Master Data ──
+  { id: 'orders',              label: 'Pesanan Sewa (PO)',      icon: ClipboardList,   roles: ['direktur', 'admin_staff', 'operasional', 'finance'] },
+  { id: 'surat-jalan',         label: 'Surat Jalan & Lapangan', icon: Truck,           roles: ['direktur', 'admin_staff', 'operasional'] },
+  { id: 'units',               label: 'Master Unit Forklift',  icon: HardHat,         roles: ['direktur', 'admin_staff', 'operasional'] },
+  { id: 'customers',           label: 'Master Pelanggan',       icon: Building2,       roles: ['direktur', 'admin_staff', 'finance'] },
+  { id: 'users',               label: 'Kelola Users & Role',    icon: Users,           roles: ['direktur', 'admin_staff'] },
 ];
 
 const SECTION_LABELS: Record<string, string> = {
-  'beranda-direktur':   'Eksekutif',
+  'beranda-direktur':   'Dashboard',
   'saw-dashboard':      'SPK Maintenance',
   'operational-logs':   'SPK Maintenance',
   'maintenance-orders': 'SPK Maintenance',
   'saw-weights':        'SPK Maintenance',
-  'dashboard':          'Operasional',
+  'dashboard':          'Dashboard',
   'orders':             'Operasional',
   'surat-jalan':        'Operasional',
   'units':              'Master Data',
