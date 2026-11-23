@@ -284,7 +284,7 @@ export const BerandaDirektur: React.FC = () => {
       <div className="fleet-top-bar">
         <div>
           <h1 className="fleet-title">Dashboard Manajemen Armada Forklift</h1>
-          <p className="fleet-subtitle">PT. Anugrah Maha Tunggal • Panel Eksekutif Direktur</p>
+          <p className="fleet-subtitle">PT. Anugrah Maha Tunggal • Panel Monitoring Terintegrasi</p>
         </div>
       </div>
 

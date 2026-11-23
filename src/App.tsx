@@ -48,12 +48,12 @@ const LoadingScreen: React.FC = () => (
   </div>
 );
 
-// ── Default home page per role ────────────────────────────────
+// ── Default home page per role (semua role langsung ke dashboard yang disamakan) ──
 const DEFAULT_PAGE_BY_ROLE: Record<string, string> = {
   direktur:    'beranda-direktur',
-  admin_staff: 'surat-jalan',
-  operasional: 'surat-jalan',
-  finance:     'orders',
+  admin_staff: 'beranda-direktur',
+  operasional: 'beranda-direktur',
+  finance:     'beranda-direktur',
 };
 
 // ── AppContent ────────────────────────────────────────────────
@@ -97,9 +97,9 @@ const AppContent: React.FC = () => {
       case 'maintenance-orders':
         return <MaintenanceOrders />;
 
-      // ── Shared / Admin Staff ──
+      // ── Shared / Dashboard ──
       case 'dashboard':
-        return <Dashboard />;
+        return <BerandaDirektur />;
       case 'orders':
         return <Orders />;
       case 'surat-jalan':
