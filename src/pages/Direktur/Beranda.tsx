@@ -33,6 +33,11 @@ import { SAWCalculationResult, SPKMaintenance } from '../../types';
 import './Beranda.css';
 
 // ─── Interfaces ────────────────────────────────────────────────────────────────
+interface PeriodYear {
+  year: number;
+  months: number[];
+}
+
 interface DashboardMetrics {
   unit_stats: {
     total: number;
@@ -48,6 +53,9 @@ interface DashboardMetrics {
   total_customers: number;
   active_operations: ActiveOperation[];
   recent_orders: RecentOrder[];
+  all_orders?: RecentOrder[];
+  all_operations?: ActiveOperation[];
+  available_periods?: PeriodYear[];
 }
 
 interface ActiveOperation {
@@ -76,6 +84,20 @@ interface RecentOrder {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+const monthNames: Record<number, string> = {
+  1: 'Januari',
+  2: 'Februari',
+  3: 'Maret',
+  4: 'April',
+  5: 'Mei',
+  6: 'Juni',
+  7: 'Juli',
+  8: 'Agustus',
+  9: 'September',
+  10: 'Oktober',
+  11: 'November',
+  12: 'Desember',
+};
 const formatRupiah = (amount: number) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount);
 
@@ -117,7 +139,11 @@ export const BerandaDirektur: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'operations' | 'orders' | 'spk'>('operations');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Time filter state seperti di gambar (HARI / BULAN / TAHUN)
+  // ── Filter Global Periode (Tahun & Bulan) ──
+  const [selectedYear, setSelectedYear] = useState<string>('ALL');
+  const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
+
+  // Time filter state grafik lokal (HARI / BULAN / TAHUN)
   const [revenueFilter, setRevenueFilter] = useState<'HARI' | 'BULAN' | 'TAHUN'>('BULAN');
   const [hoursFilter, setHoursFilter] = useState<'BULAN' | 'TAHUN'>('BULAN');
 
@@ -164,25 +190,114 @@ export const BerandaDirektur: React.FC = () => {
     return () => clearInterval(interval);
   }, [fetchAllData]);
 
-  // Perhitungan Nilai Finansial
+  // Sumber Data Utuh
+  const allOrders = useMemo(() => {
+    return data?.all_orders && data.all_orders.length > 0 ? data.all_orders : (data?.recent_orders || []);
+  }, [data]);
+
+  const allOperations = useMemo(() => {
+    return data?.all_operations && data.all_operations.length > 0 ? data.all_operations : (data?.active_operations || []);
+  }, [data]);
+
+  // Ekstrak Tahun yang benar-benar ada di database
+  const availableYears = useMemo(() => {
+    if (data?.available_periods && data.available_periods.length > 0) {
+      return data.available_periods.map(p => p.year.toString());
+    }
+    const set = new Set<string>();
+    allOrders.forEach(o => {
+      const d = o.start_date || o.order_date;
+      if (d && d.length >= 4) {
+        set.add(d.substring(0, 4));
+      }
+    });
+    return Array.from(set).sort((a, b) => b.localeCompare(a));
+  }, [data, allOrders]);
+
+  // Ekstrak Bulan yang benar-benar ada di database untuk tahun terpilih
+  const availableMonths = useMemo(() => {
+    if (data?.available_periods && data.available_periods.length > 0) {
+      if (selectedYear === 'ALL') {
+        const set = new Set<number>();
+        data.available_periods.forEach(p => p.months.forEach(m => set.add(m)));
+        return Array.from(set).sort((a, b) => a - b);
+      }
+      const match = data.available_periods.find(p => p.year.toString() === selectedYear);
+      return match ? [...match.months].sort((a, b) => a - b) : [];
+    }
+    const monthSet = new Set<number>();
+    allOrders.forEach(o => {
+      const d = o.start_date || o.order_date;
+      if (d) {
+        const parts = d.split('-');
+        if (parts.length >= 2) {
+          if (selectedYear === 'ALL' || parts[0] === selectedYear) {
+            monthSet.add(parseInt(parts[1], 10));
+          }
+        }
+      }
+    });
+    return Array.from(monthSet).sort((a, b) => a - b);
+  }, [data, allOrders, selectedYear]);
+
+  // Reset selectedMonth jika bulan yang dipilih tidak tersedia di tahun baru
+  useEffect(() => {
+    if (selectedMonth !== 'ALL') {
+      const numM = parseInt(selectedMonth, 10);
+      if (!availableMonths.includes(numM)) {
+        setSelectedMonth('ALL');
+      }
+    }
+  }, [selectedYear, availableMonths, selectedMonth]);
+
+  // ── Helper filter tanggal sesuai tahun dan bulan terpilih ──
+  const matchPeriod = useCallback((dateStr?: string) => {
+    if (!dateStr) return false;
+    const clean = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+    const parts = clean.split('-');
+    if (parts.length < 2) return false;
+    const y = parts[0];
+    const m = parseInt(parts[1], 10).toString();
+
+    if (selectedYear !== 'ALL' && y !== selectedYear) return false;
+    if (selectedMonth !== 'ALL' && m !== selectedMonth) return false;
+    return true;
+  }, [selectedYear, selectedMonth]);
+
+  // Perhitungan Nilai Finansial Tersaring Periode Berdasarkan Data Riil
   const financialStats = useMemo(() => {
     let activeRevenue = 0;
     let pendingRevenue = 0;
     let completedRevenue = 0;
+    let matchCount = 0;
+    let totalHours = 0;
 
-    data?.recent_orders?.forEach((o) => {
-      const price = Number(o.agreed_price) || 0;
-      if (o.status === 'ACTIVE' || o.status === 'APPROVED') {
-        activeRevenue += price;
-      } else if (o.status === 'PENDING') {
-        pendingRevenue += price;
-      } else if (o.status === 'COMPLETED') {
-        completedRevenue += price;
+    allOrders.forEach((o) => {
+      const orderDate = o.start_date || o.order_date;
+      if (matchPeriod(orderDate)) {
+        matchCount++;
+        const price = Number(o.agreed_price) || 0;
+        if (o.status === 'ACTIVE' || o.status === 'APPROVED') {
+          activeRevenue += price;
+        } else if (o.status === 'PENDING') {
+          pendingRevenue += price;
+        } else if (o.status === 'COMPLETED') {
+          completedRevenue += price;
+        }
+
+        const dur = o.duration_value || 1;
+        if (o.rental_duration_type === 'JAM') {
+          totalHours += dur;
+        } else if (o.rental_duration_type === 'BULAN') {
+          totalHours += dur * 200;
+        } else {
+          totalHours += dur * 8; // 1 hari = 8 jam kerja standar
+        }
       }
     });
 
-    const totalRevenue = activeRevenue + completedRevenue || 148500000;
-    const estimatedExpenses = Math.round(totalRevenue * 0.28); // ~28% operasional & maintenance
+    const totalRevenue = activeRevenue + completedRevenue;
+    const estimatedExpenses = Math.round(totalRevenue * 0.28);
     const netProfit = totalRevenue - estimatedExpenses;
 
     return {
@@ -192,99 +307,290 @@ export const BerandaDirektur: React.FC = () => {
       totalRevenue,
       estimatedExpenses,
       netProfit,
-      totalHours: 1638 // Total jam akumulasi operasi forklift
+      totalHours,
+      matchCount
     };
-  }, [data]);
+  }, [allOrders, matchPeriod]);
 
-  // Data Trend Line Chart (Bulan Jan - Des)
+  // Data Trend Line Chart (Bulan Jan - Des atau Mingguan dalam Bulan)
   const lineChartData = useMemo(() => {
-    if (revenueFilter === 'HARI') {
-      return [
-        { label: 'Sen', current: 45, last: 38 },
-        { label: 'Sel', current: 72, last: 55 },
-        { label: 'Rab', current: 90, last: 80 },
-        { label: 'Kam', current: 65, last: 70 },
-        { label: 'Jum', current: 110, last: 95 },
-        { label: 'Sab', current: 85, last: 60 },
-        { label: 'Min', current: 40, last: 30 },
+    // Jika memilih bulan spesifik, tampilkan tren per minggu
+    if (selectedMonth !== 'ALL') {
+      const weeks = [
+        { label: 'Minggu 1', current: 0, last: 0 },
+        { label: 'Minggu 2', current: 0, last: 0 },
+        { label: 'Minggu 3', current: 0, last: 0 },
+        { label: 'Minggu 4', current: 0, last: 0 },
+        { label: 'Minggu 5', current: 0, last: 0 },
       ];
+
+      allOrders.forEach(o => {
+        const dStr = o.start_date || o.order_date;
+        if (!dStr) return;
+        const clean = dStr.includes('T') ? dStr.split('T')[0] : dStr;
+        const parts = clean.split('-');
+        if (parts.length < 3) return;
+        const y = parts[0];
+        const m = parseInt(parts[1], 10).toString();
+        const day = parseInt(parts[2], 10);
+        const price = (Number(o.agreed_price) || 0) / 1_000_000;
+
+        if (m === selectedMonth) {
+          let wIdx = 0;
+          if (day <= 7) wIdx = 0;
+          else if (day <= 14) wIdx = 1;
+          else if (day <= 21) wIdx = 2;
+          else if (day <= 28) wIdx = 3;
+          else wIdx = 4;
+
+          if (selectedYear === 'ALL' || y === selectedYear) {
+            weeks[wIdx].current += price;
+          } else if (selectedYear !== 'ALL' && parseInt(y, 10) === parseInt(selectedYear, 10) - 1) {
+            weeks[wIdx].last += price;
+          }
+        }
+      });
+
+      return weeks.map(w => ({
+        label: w.label,
+        current: Math.round(w.current * 10) / 10,
+        last: Math.round(w.last * 10) / 10,
+      }));
     }
-    return [
-      { label: 'Jan', current: 35, last: 48 },
-      { label: 'Feb', current: 68, last: 52 },
-      { label: 'Mar', current: 42, last: 85 },
-      { label: 'Apr', current: 88, last: 92 },
-      { label: 'Mei', current: 55, last: 68 },
-      { label: 'Jun', current: 75, last: 95 },
-      { label: 'Jul', current: 105, last: 118 },
-      { label: 'Agu', current: 95, last: 102 },
-      { label: 'Sep', current: 115, last: 88 },
-      { label: 'Okt', current: 78, last: 90 },
-      { label: 'Nov', current: 85, last: 105 },
-      { label: 'Des', current: 108, last: 120 },
-    ];
-  }, [revenueFilter]);
 
-  // Data Bar Chart Jam Kerja Forklift (Hour Meter per Bulan)
+    if (revenueFilter === 'HARI') {
+      const days = [
+        { label: 'Sen', current: 0, last: 0 },
+        { label: 'Sel', current: 0, last: 0 },
+        { label: 'Rab', current: 0, last: 0 },
+        { label: 'Kam', current: 0, last: 0 },
+        { label: 'Jum', current: 0, last: 0 },
+        { label: 'Sab', current: 0, last: 0 },
+        { label: 'Min', current: 0, last: 0 },
+      ];
+
+      allOrders.forEach(o => {
+        const dStr = o.start_date || o.order_date;
+        if (!dStr) return;
+        const d = new Date(dStr);
+        if (isNaN(d.getTime())) return;
+        const clean = dStr.includes('T') ? dStr.split('T')[0] : dStr;
+        const y = clean.split('-')[0];
+        const price = (Number(o.agreed_price) || 0) / 1_000_000;
+
+        const jsDay = d.getDay();
+        const dayIdx = jsDay === 0 ? 6 : jsDay - 1;
+
+        if (selectedYear === 'ALL' || y === selectedYear) {
+          days[dayIdx].current += price;
+        } else if (selectedYear !== 'ALL' && parseInt(y, 10) === parseInt(selectedYear, 10) - 1) {
+          days[dayIdx].last += price;
+        }
+      });
+
+      return days.map(d => ({
+        label: d.label,
+        current: Math.round(d.current * 10) / 10,
+        last: Math.round(d.last * 10) / 10,
+      }));
+    }
+
+    // Default 12 Bulan (Jan - Des)
+    const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const months = monthLabels.map(lbl => ({ label: lbl, current: 0, last: 0 }));
+
+    allOrders.forEach(o => {
+      const dStr = o.start_date || o.order_date;
+      if (!dStr) return;
+      const clean = dStr.includes('T') ? dStr.split('T')[0] : dStr;
+      const parts = clean.split('-');
+      if (parts.length < 2) return;
+      const y = parts[0];
+      const mIdx = parseInt(parts[1], 10) - 1;
+      const price = (Number(o.agreed_price) || 0) / 1_000_000;
+
+      if (mIdx >= 0 && mIdx < 12) {
+        if (selectedYear === 'ALL' || y === selectedYear) {
+          months[mIdx].current += price;
+        } else if (selectedYear !== 'ALL' && parseInt(y, 10) === parseInt(selectedYear, 10) - 1) {
+          months[mIdx].last += price;
+        }
+      }
+    });
+
+    return months.map(m => ({
+      label: m.label,
+      current: Math.round(m.current * 10) / 10,
+      last: Math.round(m.last * 10) / 10,
+    }));
+  }, [allOrders, revenueFilter, selectedYear, selectedMonth]);
+
+  // Skala Maksimum Grafik Tren Pendapatan
+  const maxChartVal = useMemo(() => {
+    const max = Math.max(...lineChartData.map(d => Math.max(d.current, d.last)), 10);
+    return Math.ceil(max / 20) * 20;
+  }, [lineChartData]);
+
+  // Data Bar Chart Jam Kerja Forklift (Hour Meter)
   const barChartHours = useMemo(() => {
-    return [
-      { month: 'Jan', hours: 85 },
-      { month: 'Feb', hours: 145 },
-      { month: 'Mar', hours: 92 },
-      { month: 'Apr', hours: 128 },
-      { month: 'Mei', hours: 110 },
-      { month: 'Jun', hours: 75 },
-      { month: 'Jul', hours: 155 },
-      { month: 'Agu', hours: 168 },
-      { month: 'Sep', hours: 62 },
-      { month: 'Okt', hours: 98 },
-      { month: 'Nov', hours: 120 },
-      { month: 'Des', hours: 135 },
-    ];
-  }, []);
+    if (selectedMonth !== 'ALL') {
+      const weeks = [
+        { month: 'Minggu 1', hours: 0 },
+        { month: 'Minggu 2', hours: 0 },
+        { month: 'Minggu 3', hours: 0 },
+        { month: 'Minggu 4', hours: 0 },
+        { month: 'Minggu 5', hours: 0 },
+      ];
+      allOrders.forEach(o => {
+        const dStr = o.start_date || o.order_date;
+        if (!dStr) return;
+        const clean = dStr.includes('T') ? dStr.split('T')[0] : dStr;
+        const parts = clean.split('-');
+        if (parts.length < 3) return;
+        const y = parts[0];
+        const m = parseInt(parts[1], 10).toString();
+        const day = parseInt(parts[2], 10);
+        if (m === selectedMonth && (selectedYear === 'ALL' || y === selectedYear)) {
+          let wIdx = 0;
+          if (day <= 7) wIdx = 0;
+          else if (day <= 14) wIdx = 1;
+          else if (day <= 21) wIdx = 2;
+          else if (day <= 28) wIdx = 3;
+          else wIdx = 4;
+          const dur = o.duration_value || 1;
+          weeks[wIdx].hours += dur * 8;
+        }
+      });
+      return weeks;
+    }
 
-  // Filter Data Tab Berdasarkan Search
+    const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const months = monthLabels.map(lbl => ({ month: lbl, hours: 0 }));
+
+    allOrders.forEach(o => {
+      const dStr = o.start_date || o.order_date;
+      if (!dStr) return;
+      const clean = dStr.includes('T') ? dStr.split('T')[0] : dStr;
+      const parts = clean.split('-');
+      if (parts.length < 2) return;
+      const y = parts[0];
+      const mIdx = parseInt(parts[1], 10) - 1;
+
+      if (mIdx >= 0 && mIdx < 12) {
+        if (selectedYear === 'ALL' || y === selectedYear) {
+          const dur = o.duration_value || 1;
+          months[mIdx].hours += dur * 8;
+        }
+      }
+    });
+
+    return months;
+  }, [allOrders, selectedYear, selectedMonth]);
+
+  // Filter Data Tab Berdasarkan Search & Periode
   const filteredOperations = useMemo(() => {
-    if (!data?.active_operations) return [];
-    if (!searchQuery) return data.active_operations;
-    const q = searchQuery.toLowerCase();
-    return data.active_operations.filter(op =>
-      op.letter_number?.toLowerCase().includes(q) ||
-      op.unit?.unit_code?.toLowerCase().includes(q) ||
-      op.operator?.name?.toLowerCase().includes(q) ||
-      op.rental_order?.customer?.name?.toLowerCase().includes(q)
-    );
-  }, [data?.active_operations, searchQuery]);
+    return allOperations.filter(op => {
+      if (!matchPeriod(op.issue_date)) return false;
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        op.letter_number?.toLowerCase().includes(q) ||
+        op.unit?.unit_code?.toLowerCase().includes(q) ||
+        op.operator?.name?.toLowerCase().includes(q) ||
+        op.rental_order?.customer?.name?.toLowerCase().includes(q)
+      );
+    });
+  }, [allOperations, searchQuery, matchPeriod]);
 
   const filteredOrders = useMemo(() => {
-    if (!data?.recent_orders) return [];
-    if (!searchQuery) return data.recent_orders;
-    const q = searchQuery.toLowerCase();
-    return data.recent_orders.filter(ord =>
-      ord.order_number?.toLowerCase().includes(q) ||
-      ord.customer?.name?.toLowerCase().includes(q) ||
-      ord.unit?.unit_code?.toLowerCase().includes(q)
-    );
-  }, [data?.recent_orders, searchQuery]);
+    return allOrders.filter(ord => {
+      const orderDate = ord.start_date || ord.order_date;
+      if (!matchPeriod(orderDate)) return false;
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        ord.order_number?.toLowerCase().includes(q) ||
+        ord.customer?.name?.toLowerCase().includes(q) ||
+        ord.unit?.unit_code?.toLowerCase().includes(q)
+      );
+    });
+  }, [allOrders, searchQuery, matchPeriod]);
 
   const filteredSPK = useMemo(() => {
     if (!spkList) return [];
-    if (!searchQuery) return spkList;
-    const q = searchQuery.toLowerCase();
-    return spkList.filter(s =>
-      s.spk_number?.toLowerCase().includes(q) ||
-      s.unit?.unit_code?.toLowerCase().includes(q) ||
-      s.mechanic_name?.toLowerCase().includes(q)
-    );
-  }, [spkList, searchQuery]);
+    return spkList.filter(s => {
+      if (!matchPeriod(s.scheduled_date || s.issued_at)) return false;
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        s.spk_number?.toLowerCase().includes(q) ||
+        s.unit?.unit_code?.toLowerCase().includes(q) ||
+        s.mechanic_name?.toLowerCase().includes(q)
+      );
+    });
+  }, [spkList, searchQuery, matchPeriod]);
 
   return (
     <div className="beranda-page page-body">
-      {/* ── Top Header Bar Ringkas ── */}
+      {/* ── Top Header Bar & Filter Periode (Tahun / Bulan) ── */}
       <div className="fleet-top-bar">
         <div>
           <h1 className="fleet-title">Dashboard Manajemen Armada Forklift</h1>
           <p className="fleet-subtitle">PT. Anugrah Maha Tunggal • Panel Monitoring Terintegrasi</p>
+        </div>
+
+        {/* Filter Periode Global Berbasis Data Database */}
+        <div className="period-filter-bar">
+          <div className="period-filter-label">
+            <Calendar size={15} className="text-primary" />
+            <span>Filter Periode:</span>
+          </div>
+
+          {/* Dropdown Pilihan Tahun (Hanya yang ada di Database) */}
+          <div className="period-select-wrap">
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="period-select"
+              title="Filter Berdasarkan Tahun yang Ada di Database"
+            >
+              <option value="ALL">Semua Tahun</option>
+              {availableYears.map(yr => (
+                <option key={yr} value={yr}>Tahun {yr}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Dropdown Pilihan Bulan (Hanya yang ada di Database untuk Tahun Terpilih) */}
+          <div className="period-select-wrap">
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="period-select"
+              title="Filter Berdasarkan Bulan yang Ada di Database"
+            >
+              <option value="ALL">Semua Bulan (Jan - Des)</option>
+              {availableMonths.map(m => (
+                <option key={m} value={m.toString()}>
+                  {monthNames[m]} ({m.toString().padStart(2, '0')})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Reset Filter Button */}
+          {(selectedYear !== 'ALL' || selectedMonth !== 'ALL') && (
+            <button
+              className="btn-reset-period"
+              onClick={() => {
+                setSelectedYear('ALL');
+                setSelectedMonth('ALL');
+              }}
+              title="Kembalikan ke semua periode data"
+            >
+              Reset
+            </button>
+          )}
         </div>
       </div>
 
@@ -366,52 +672,55 @@ export const BerandaDirektur: React.FC = () => {
           {/* Mini KPI Highlights di atas garis */}
           <div className="revenue-summary-row">
             <div className="rev-metric">
-              <span className="rev-lbl">Rata-rata Pendapatan</span>
+              <span className="rev-lbl">Total Omset Periode</span>
               <div className="rev-val-row">
-                <strong>Rp 78,5 Jt</strong>
-                <span className="trend-pct text-emerald"><ArrowUpRight size={14} /> 10.5%</span>
+                <strong>{formatShortRupiah(financialStats.totalRevenue)}</strong>
+                <span className="trend-pct text-emerald"><ArrowUpRight size={14} /> {financialStats.matchCount} Order</span>
               </div>
             </div>
 
             <div className="rev-metric">
-              <span className="rev-lbl">Rata-rata Pemasukan</span>
+              <span className="rev-lbl">Realisasi Pemasukan</span>
               <div className="rev-val-row">
-                <strong>Rp 64,2 Jt</strong>
-                <span className="trend-pct text-emerald"><ArrowUpRight size={14} /> 8.2%</span>
+                <strong>{formatShortRupiah(financialStats.completedRevenue + financialStats.activeRevenue)}</strong>
+                <span className="trend-pct text-emerald"><ArrowUpRight size={14} /> Lunas/Aktif</span>
               </div>
             </div>
 
             <div className="rev-metric">
-              <span className="rev-lbl">Rata-rata Pengeluaran</span>
+              <span className="rev-lbl">Estimasi Pengeluaran</span>
               <div className="rev-val-row">
-                <strong>Rp 18,3 Jt</strong>
-                <span className="trend-pct text-amber"><ArrowDownRight size={14} /> 2.1%</span>
+                <strong>{formatShortRupiah(financialStats.estimatedExpenses)}</strong>
+                <span className="trend-pct text-amber"><ArrowDownRight size={14} /> 28% Biaya</span>
               </div>
             </div>
 
             <div className="rev-legends">
               <div className="legend-entry">
                 <span className="legend-line blue-line"></span>
-                <span>Tahun Ini (2026)</span>
+                <span>Periode Ini {selectedYear !== 'ALL' ? `(${selectedYear})` : ''}</span>
               </div>
-              <div className="legend-entry">
-                <span className="legend-line gray-line"></span>
-                <span>Tahun Lalu (2025)</span>
-              </div>
+              {selectedYear !== 'ALL' && (
+                <div className="legend-entry">
+                  <span className="legend-line gray-line"></span>
+                  <span>Tahun Lalu ({parseInt(selectedYear, 10) - 1})</span>
+                </div>
+              )}
             </div>
           </div>
 
           {/* SVG Line Chart Interactive Canvas */}
           <div className="svg-line-container">
-            <svg viewBox="0 0 760 260" className="revenue-svg">
+            <svg viewBox="0 0 1000 240" preserveAspectRatio="none" className="revenue-svg">
               {/* Horizontal Grid lines */}
-              {[20, 40, 60, 80, 100, 120].map((level, i) => {
-                const y = 220 - (level / 130) * 190;
+              {[0.2, 0.4, 0.6, 0.8, 1.0].map((frac) => {
+                const level = Math.round(maxChartVal * frac);
+                const y = 205 - (level / maxChartVal) * 165;
                 return (
-                  <g key={level}>
-                    <line x1="45" y1={y} x2="740" y2={y} stroke="#edf2f7" strokeWidth="1" strokeDasharray="3,3" />
-                    <text x="35" y={y + 4} textAnchor="end" fontSize="10" fill="#94a3b8" fontFamily="sans-serif">
-                      {level}k
+                  <g key={frac}>
+                    <line x1="38" y1={y} x2="985" y2={y} stroke="#edf2f7" strokeWidth="1" strokeDasharray="3,3" />
+                    <text x="32" y={y + 4} textAnchor="end" fontSize="11" fill="#94a3b8" fontFamily="sans-serif">
+                      {level} Jt
                     </text>
                   </g>
                 );
@@ -428,21 +737,24 @@ export const BerandaDirektur: React.FC = () => {
               {/* Polylines & Paths */}
               {(() => {
                 const n = lineChartData.length;
+                const xStart = 45;
+                const xEnd = 980;
+
                 const pointsThis = lineChartData.map((d, idx) => {
-                  const x = 55 + (idx / (n - 1)) * 670;
-                  const y = 220 - (d.current / 130) * 190;
+                  const x = n > 1 ? xStart + (idx / (n - 1)) * (xEnd - xStart) : (xStart + xEnd) / 2;
+                  const y = 205 - (d.current / maxChartVal) * 165;
                   return { x, y, data: d };
                 });
 
                 const pointsLast = lineChartData.map((d, idx) => {
-                  const x = 55 + (idx / (n - 1)) * 670;
-                  const y = 220 - (d.last / 130) * 190;
+                  const x = n > 1 ? xStart + (idx / (n - 1)) * (xEnd - xStart) : (xStart + xEnd) / 2;
+                  const y = 205 - (d.last / maxChartVal) * 165;
                   return { x, y, data: d };
                 });
 
                 const pathThis = pointsThis.reduce((acc, p, i) => `${acc} ${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`, '');
                 const pathLast = pointsLast.reduce((acc, p, i) => `${acc} ${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`, '');
-                const areaThis = `${pathThis} L ${pointsThis[n - 1].x} 220 L ${pointsThis[0].x} 220 Z`;
+                const areaThis = `${pathThis} L ${pointsThis[n - 1].x} 205 L ${pointsThis[0].x} 205 Z`;
 
                 return (
                   <>
@@ -481,7 +793,7 @@ export const BerandaDirektur: React.FC = () => {
                       <text
                         key={idx}
                         x={pt.x}
-                        y="245"
+                        y="228"
                         textAnchor="middle"
                         fontSize="11"
                         fill="#64748b"
@@ -615,42 +927,48 @@ export const BerandaDirektur: React.FC = () => {
           <div className="bottom-mini-metrics">
             <div>
               <span className="b-lbl">Total Jam HM</span>
-              <div className="b-val">1.638 Jam <small className="text-emerald">↑0.5%</small></div>
+              <div className="b-val">{financialStats.totalHours.toLocaleString('id-ID')} Jam <small className="text-emerald">Aktif</small></div>
             </div>
             <div>
               <span className="b-lbl">Rata-rata / Unit</span>
-              <div className="b-val">163,8 Jam <small className="text-emerald">↑0.5%</small></div>
+              <div className="b-val">{financialStats.totalHours > 0 ? (financialStats.totalHours / 10).toFixed(1) : 0} Jam <small className="text-emerald">HM</small></div>
             </div>
             <div>
               <span className="b-lbl">Total Order</span>
-              <div className="b-val">42 Kontrak <small className="text-amber">↓0.5%</small></div>
+              <div className="b-val">{financialStats.matchCount} Kontrak <small className="text-blue">Data</small></div>
             </div>
           </div>
 
           {/* Bar Chart SVG */}
           <div className="svg-bar-container">
             <svg viewBox="0 0 320 130" className="bar-svg">
-              {barChartHours.map((b, idx) => {
-                const x = 20 + idx * 25;
-                const h = (b.hours / 180) * 85;
-                const y = 105 - h;
-                return (
-                  <g key={b.month}>
-                    <rect
-                      x={x}
-                      y={y}
-                      width="12"
-                      height={h}
-                      rx="3"
-                      fill="#3b82f6"
-                      className="bar-rect"
-                    />
-                    <text x={x + 6} y="122" textAnchor="middle" fontSize="9" fill="#94a3b8">
-                      {b.month}
-                    </text>
-                  </g>
-                );
-              })}
+              {(() => {
+                const maxH = Math.max(...barChartHours.map(x => x.hours), 10);
+                const totalBars = barChartHours.length;
+                const barWidth = totalBars > 6 ? 12 : 24;
+                const gap = (280 - totalBars * barWidth) / (totalBars + 1);
+                return barChartHours.map((b, idx) => {
+                  const x = 20 + gap + idx * (barWidth + gap);
+                  const h = maxH > 0 ? (b.hours / maxH) * 85 : 0;
+                  const y = 105 - h;
+                  return (
+                    <g key={b.month}>
+                      <rect
+                        x={x}
+                        y={y}
+                        width={barWidth}
+                        height={Math.max(h, 2)}
+                        rx="3"
+                        fill="#3b82f6"
+                        className="bar-rect"
+                      />
+                      <text x={x + barWidth / 2} y="122" textAnchor="middle" fontSize="9" fill="#94a3b8">
+                        {b.month}
+                      </text>
+                    </g>
+                  );
+                });
+              })()}
             </svg>
           </div>
         </div>
@@ -757,7 +1075,7 @@ export const BerandaDirektur: React.FC = () => {
               onClick={() => setActiveTab('operations')}
             >
               <Truck size={16} />
-              <span>Operasi Lapangan ({data?.active_operations?.length || 0})</span>
+              <span>Operasi Lapangan ({filteredOperations.length})</span>
             </button>
 
             <button
@@ -765,7 +1083,7 @@ export const BerandaDirektur: React.FC = () => {
               onClick={() => setActiveTab('orders')}
             >
               <FileCheck size={16} />
-              <span>Pesanan Sewa ({data?.recent_orders?.length || 0})</span>
+              <span>Pesanan Sewa ({filteredOrders.length})</span>
             </button>
 
             <button
@@ -773,7 +1091,7 @@ export const BerandaDirektur: React.FC = () => {
               onClick={() => setActiveTab('spk')}
             >
               <Wrench size={16} />
-              <span>SPK Pemeliharaan Bengkel ({spkList.length})</span>
+              <span>SPK Pemeliharaan Bengkel ({filteredSPK.length})</span>
             </button>
           </div>
 
