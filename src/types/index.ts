@@ -195,6 +195,7 @@ export interface SAWCalculationResult {
   warning_count: number;
   safe_count: number;
   calculated_at: string;
+  available_years?: number[];
 }
 
 export interface HasilRanking {

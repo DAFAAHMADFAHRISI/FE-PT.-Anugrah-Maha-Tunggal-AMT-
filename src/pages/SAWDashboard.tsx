@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Award, AlertTriangle, ShieldCheck, Clock,
-  Wrench, CheckCircle, HardHat, FileSpreadsheet, Eye, Printer, ChevronRight, History
+  Wrench, CheckCircle, HardHat, FileSpreadsheet, Eye, Printer, ChevronRight, History, RefreshCw, Calendar
 } from 'lucide-react';
 import { SAWCalculationResult, SAWAlternativeResult, SPKMaintenance, HasilRanking } from '../types';
 import { sawService } from '../services/sawService';
@@ -11,7 +11,10 @@ import { SPKPrintDocument } from '../components/SPKPrintDocument';
 export const SAWDashboard: React.FC = () => {
   const [rankingData, setRankingData] = useState<SAWCalculationResult | null>(null);
   const [historyList, setHistoryList] = useState<HasilRanking[]>([]);
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
+  const [selectedYear, setSelectedYear] = useState<string>('ALL');
   const [isLoading, setIsLoading] = useState(true);
+  const [isCalculating, setIsCalculating] = useState(false);
   const [activeTab, setActiveTab] = useState<'ranking' | 'history'>('ranking');
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -23,25 +26,49 @@ export const SAWDashboard: React.FC = () => {
   const [previewSPK, setPreviewSPK] = useState<SPKMaintenance | null>(null);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    loadData(selectedYear);
+  }, [selectedYear]);
 
-  const loadData = async () => {
+  const loadData = async (year = selectedYear) => {
     setIsLoading(true);
     try {
       const [latestRes, historyRes] = await Promise.all([
-        sawService.getLatestRanking(),
-        sawService.getRankingHistory(10),
+        sawService.getLatestRanking(year),
+        sawService.getRankingHistory(10, year),
       ]);
       setRankingData(latestRes);
+      if (latestRes?.available_years && latestRes.available_years.length > 0) {
+        setAvailableYears(latestRes.available_years);
+      }
       setHistoryList(historyRes || []);
     } catch (err: any) {
       setNotification({
         type: 'error',
-        message: err?.response?.data?.error || 'Gagal memuat rekomendasi ranking SAW',
+        message: err?.response?.data?.error || err?.response?.data?.message || 'Gagal memuat rekomendasi ranking SAW',
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRecalculate = async () => {
+    setIsCalculating(true);
+    setNotification(null);
+    try {
+      await sawService.calculateRanking('Kalkulasi manual melalui tombol dashboard');
+      setSelectedYear('ALL');
+      await loadData('ALL');
+      setNotification({
+        type: 'success',
+        message: 'Kalkulasi algoritma SAW berhasil dieksekusi! Peringkat risiko armada telah diperbarui.',
+      });
+    } catch (err: any) {
+      setNotification({
+        type: 'error',
+        message: err?.response?.data?.message || err?.message || 'Gagal memicu kalkulasi ulang SAW',
+      });
+    } finally {
+      setIsCalculating(false);
     }
   };
 
@@ -50,13 +77,23 @@ export const SAWDashboard: React.FC = () => {
     setIsSPKModalOpen(true);
   };
 
-  const handleSPKSuccess = (spk: SPKMaintenance) => {
+  const handleSPKSuccess = async (spk: SPKMaintenance) => {
     setNotification({
       type: 'success',
       message: `Surat Perintah Kerja ${spk.spk_number} berhasil diterbitkan! Status unit diubah menjadi MAINTENANCE.`,
     });
     setPreviewSPK(spk); // Tampilkan preview cetak langsung
-    loadData();
+    try {
+      await sawService.calculateRanking('Pembaruan peringkat pasca-penerbitan SPK');
+    } catch (e) {
+      // ignore
+    }
+    try {
+      await sawService.calculateRanking('Pembaruan peringkat pasca-penerbitan SPK');
+    } catch (e) {
+      // ignore
+    }
+    loadData(selectedYear);
   };
 
   // Jika sedang membuka mode cetak dokumen SPK
@@ -97,6 +134,82 @@ export const SAWDashboard: React.FC = () => {
           <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: '14px' }}>
             Sistem Pendukung Keputusan pemeliharaan armada forklift berbasis komputasi matriks ternormalisasi secara real-time
           </p>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          {/* Filter Tahun Berbasis Database */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            background: '#ffffff', padding: '8px 14px', borderRadius: '10px',
+            border: '1px solid #cbd5e1', boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+          }}>
+            <Calendar size={16} style={{ color: '#2563eb' }} />
+            <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569' }}>Filter Tahun:</span>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              style={{
+                border: 'none', background: 'transparent', fontSize: '13px',
+                fontWeight: 700, color: '#0f172a', outline: 'none', cursor: 'pointer'
+              }}
+              title="Filter Data SAW Berdasarkan Tahun yang Ada di Database"
+            >
+              <option value="ALL">Semua Tahun (Terbaru)</option>
+              {availableYears.map((yr) => (
+                <option key={yr} value={yr.toString()}>Tahun {yr}</option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            onClick={handleRecalculate}
+            disabled={isCalculating || isLoading}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 18px',
+              borderRadius: '10px',
+              background: '#2563eb',
+              color: '#ffffff',
+              border: 'none',
+              fontWeight: 700,
+              fontSize: '13px',
+              cursor: isCalculating || isLoading ? 'not-allowed' : 'pointer',
+              opacity: isCalculating || isLoading ? 0.7 : 1,
+              boxShadow: '0 2px 6px rgba(37, 99, 235, 0.3)',
+              transition: 'all 0.2s',
+            }}
+          >
+            <RefreshCw size={16} style={{ animation: isCalculating ? 'spin 1s linear infinite' : 'none' }} />
+            {isCalculating ? 'Menghitung SAW...' : 'Hitung Ulang SAW'}
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            onClick={handleRecalculate}
+            disabled={isCalculating || isLoading}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 18px',
+              borderRadius: '10px',
+              background: '#2563eb',
+              color: '#ffffff',
+              border: 'none',
+              fontWeight: 700,
+              fontSize: '13px',
+              cursor: isCalculating || isLoading ? 'not-allowed' : 'pointer',
+              opacity: isCalculating || isLoading ? 0.7 : 1,
+              boxShadow: '0 2px 6px rgba(37, 99, 235, 0.3)',
+              transition: 'all 0.2s',
+            }}
+          >
+            <RefreshCw size={16} style={{ animation: isCalculating ? 'spin 1s linear infinite' : 'none' }} />
+            {isCalculating ? 'Menghitung SAW...' : 'Hitung Ulang SAW'}
+          </button>
         </div>
       </div>
 
@@ -259,9 +372,9 @@ export const SAWDashboard: React.FC = () => {
                 Waktu Perhitungan Terakhir:{' '}
                 {rankingData?.calculated_at
                   ? new Date(rankingData.calculated_at).toLocaleString('id-ID', {
-                      day: '2-digit', month: 'short', year: 'numeric',
-                      hour: '2-digit', minute: '2-digit', second: '2-digit'
-                    })
+                    day: '2-digit', month: 'short', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit'
+                  })
                   : '-'}
               </p>
             </div>
@@ -399,8 +512,8 @@ export const SAWDashboard: React.FC = () => {
                               background: isCritical
                                 ? 'linear-gradient(90deg, #ef4444, #dc2626)'
                                 : isWarning
-                                ? 'linear-gradient(90deg, #f59e0b, #d97706)'
-                                : 'linear-gradient(90deg, #22c55e, #16a34a)',
+                                  ? 'linear-gradient(90deg, #f59e0b, #d97706)'
+                                  : 'linear-gradient(90deg, #22c55e, #16a34a)',
                               borderRadius: '4px'
                             }} />
                           </div>

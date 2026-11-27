@@ -191,6 +191,13 @@ export const BerandaDirektur: React.FC = () => {
     return () => clearInterval(interval);
   }, [fetchAllData]);
 
+  // Sinkronkan data SAW saat filter tahun berubah
+  useEffect(() => {
+    sawService.getLatestRanking(selectedYear).then(res => {
+      if (res) setSawData(res);
+    }).catch(() => {});
+  }, [selectedYear]);
+
   // Sumber Data Utuh
   const allOrders = useMemo(() => {
     return data?.all_orders && data.all_orders.length > 0 ? data.all_orders : (data?.recent_orders || []);
