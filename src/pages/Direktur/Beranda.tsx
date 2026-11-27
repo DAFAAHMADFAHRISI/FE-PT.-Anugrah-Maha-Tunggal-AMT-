@@ -113,18 +113,18 @@ const formatDate = (dateStr: string) => {
 };
 
 const statusOpConfig: Record<string, { label: string; cls: string; icon: string }> = {
-  WORKING:    { label: 'Sedang Bekerja', cls: 'sop-working',  icon: '⚙️' },
-  ON_THE_WAY: { label: 'Dalam Perjalanan', cls: 'sop-otw',    icon: '🚚' },
-  ASSIGNED:   { label: 'Unit Ditugaskan', cls: 'sop-assigned', icon: '📋' },
-  FINISHED:   { label: 'Selesai',        cls: 'sop-finished', icon: '✅' },
+  WORKING: { label: 'Sedang Bekerja', cls: 'sop-working', icon: '⚙️' },
+  ON_THE_WAY: { label: 'Dalam Perjalanan', cls: 'sop-otw', icon: '🚚' },
+  ASSIGNED: { label: 'Unit Ditugaskan', cls: 'sop-assigned', icon: '📋' },
+  FINISHED: { label: 'Selesai', cls: 'sop-finished', icon: '✅' },
 };
 
 const statusOrderConfig: Record<string, { label: string; cls: string }> = {
-  PENDING:   { label: 'Menunggu Approval', cls: 'so-pending'   },
-  APPROVED:  { label: 'Disetujui',         cls: 'so-approved'  },
-  ACTIVE:    { label: 'Sedang Berjalan',   cls: 'so-active'    },
-  COMPLETED: { label: 'Selesai Lunas',     cls: 'so-completed' },
-  CANCELLED: { label: 'Dibatalkan',        cls: 'so-cancelled' },
+  PENDING: { label: 'Menunggu Approval', cls: 'so-pending' },
+  APPROVED: { label: 'Disetujui', cls: 'so-approved' },
+  ACTIVE: { label: 'Sedang Berjalan', cls: 'so-active' },
+  COMPLETED: { label: 'Selesai Lunas', cls: 'so-completed' },
+  CANCELLED: { label: 'Dibatalkan', cls: 'so-cancelled' },
 };
 
 export const BerandaDirektur: React.FC = () => {
@@ -136,7 +136,8 @@ export const BerandaDirektur: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [activeTab, setActiveTab] = useState<'operations' | 'orders' | 'spk'>('operations');
+  const [activeTab, setActiveTab] = useState<'operations' | 'orders' | 'spk' | 'saw'>('operations');
+  const [showAllSPKPeriod, setShowAllSPKPeriod] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // ── Filter Global Periode (Tahun & Bulan) ──
@@ -519,7 +520,10 @@ export const BerandaDirektur: React.FC = () => {
   const filteredSPK = useMemo(() => {
     if (!spkList) return [];
     return spkList.filter(s => {
-      if (!matchPeriod(s.scheduled_date || s.issued_at)) return false;
+      if (!showAllSPKPeriod) {
+        const spkDate = s.scheduled_date || (s.issued_at ? String(s.issued_at).split('T')[0] : '');
+        if (!matchPeriod(spkDate)) return false;
+      }
       if (!searchQuery) return true;
       const q = searchQuery.toLowerCase();
       return (
@@ -528,7 +532,7 @@ export const BerandaDirektur: React.FC = () => {
         s.mechanic_name?.toLowerCase().includes(q)
       );
     });
-  }, [spkList, searchQuery, matchPeriod]);
+  }, [spkList, searchQuery, matchPeriod, showAllSPKPeriod]);
 
   return (
     <div className="beranda-page page-body">
@@ -1093,6 +1097,14 @@ export const BerandaDirektur: React.FC = () => {
               <Wrench size={16} />
               <span>SPK Pemeliharaan Bengkel ({filteredSPK.length})</span>
             </button>
+
+            <button
+              className={`tab-btn ${activeTab === 'saw' ? 'active' : ''}`}
+              onClick={() => setActiveTab('saw')}
+            >
+              <Award size={16} />
+              <span>Prioritas Servis SAW ({sawData?.critical_count ?? 0} Kritis)</span>
+            </button>
           </div>
 
           <div className="search-box">
@@ -1252,6 +1264,35 @@ export const BerandaDirektur: React.FC = () => {
 
           {activeTab === 'spk' && (
             <div className="table-responsive">
+              {showAllSPKPeriod && (
+                <div style={{
+                  padding: '8px 14px',
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  borderRadius: '8px',
+                  marginBottom: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  fontSize: '12px',
+                  color: '#1e40af'
+                }}>
+                  <span>Menampilkan seluruh {spkList.length} SPK Pemeliharaan tanpa pembatasan filter periode tahun/bulan.</span>
+                  <button
+                    onClick={() => setShowAllSPKPeriod(false)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#2563eb',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      textDecoration: 'underline'
+                    }}
+                  >
+                    Kembalikan ke Filter Periode
+                  </button>
+                </div>
+              )}
               <table className="modern-table">
                 <thead>
                   <tr>
@@ -1270,7 +1311,34 @@ export const BerandaDirektur: React.FC = () => {
                       <td colSpan={7} className="empty-row">
                         <div className="empty-state-box">
                           <Wrench size={36} />
-                          <p>Belum ada Surat Perintah Kerja (SPK) bengkel</p>
+                          <p>
+                            {selectedYear !== 'ALL' && spkList.length > 0
+                              ? `Tidak ada SPK pada periode Tahun ${selectedYear}`
+                              : 'Belum ada Surat Perintah Kerja (SPK) bengkel'}
+                          </p>
+                          {selectedYear !== 'ALL' && spkList.length > 0 && (
+                            <>
+                              <small style={{ color: '#64748b', marginTop: '4px' }}>
+                                Terdapat {spkList.length} dokumen SPK di periode lain.
+                              </small>
+                              <button
+                                onClick={() => setShowAllSPKPeriod(true)}
+                                style={{
+                                  marginTop: '10px',
+                                  padding: '6px 14px',
+                                  borderRadius: '8px',
+                                  background: '#2563eb',
+                                  color: '#ffffff',
+                                  border: 'none',
+                                  fontSize: '12px',
+                                  fontWeight: 600,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                Tampilkan Semua Periode SPK
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1305,6 +1373,78 @@ export const BerandaDirektur: React.FC = () => {
                         <td>
                           <span className={`status-pill ${spk.status === 'COMPLETED' ? 'sop-finished' : 'sop-working'}`}>
                             {spk.status === 'COMPLETED' ? 'Selesai' : 'Sedang Dikerjakan'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {activeTab === 'saw' && (
+            <div className="table-responsive">
+              <table className="modern-table">
+                <thead>
+                  <tr>
+                    <th>Peringkat</th>
+                    <th>Unit Forklift</th>
+                    <th>Skor Risiko SAW (Vi)</th>
+                    <th>Status Prioritas</th>
+                    <th>Hour Meter (C1)</th>
+                    <th>Usia (C2)</th>
+                    <th>Kerusakan (C3)</th>
+                    <th>Status SPK</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {!sawData || !sawData.alternatives || sawData.alternatives.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="empty-row">
+                        <div className="empty-state-box">
+                          <Award size={36} />
+                          <p>Belum ada data hasil kalkulasi SAW</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    sawData.alternatives.map((alt) => (
+                      <tr key={alt.unit_id}>
+                        <td>
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            width: '28px', height: '28px', borderRadius: '50%', fontWeight: 800, fontSize: '12px',
+                            background: alt.rank_order <= 3 ? '#fee2e2' : '#f1f5f9',
+                            color: alt.rank_order <= 3 ? '#dc2626' : '#475569'
+                          }}>
+                            #{alt.rank_order}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="unit-badge-cell">
+                            <strong>{alt.unit_code}</strong>
+                            <span>{alt.brand} ({alt.capacity_ton}T)</span>
+                          </div>
+                        </td>
+                        <td>
+                          <strong style={{ fontSize: '14px', color: '#0f172a' }}>
+                            {Number(alt.score_v || 0).toFixed(4)}
+                          </strong>
+                        </td>
+                        <td>
+                          <span className={`risk-tag ${alt.risk_status === 'CRITICAL' ? 'critical' : 'warning'}`}
+                            style={alt.risk_status === 'SAFE' ? { background: '#dcfce7', color: '#166534' } : undefined}
+                          >
+                            {alt.risk_status === 'CRITICAL' ? 'KRITIS' : alt.risk_status === 'WARNING' ? 'WASPADA' : 'AMAN'}
+                          </span>
+                        </td>
+                        <td>{alt.raw_values?.C1 ?? 0} Jam</td>
+                        <td>{alt.raw_values?.C2 ?? 0} Thn</td>
+                        <td>{alt.raw_values?.C3 ?? 0}x</td>
+                        <td>
+                          <span className={`status-pill ${alt.spk_status === 'ISSUED' ? 'sop-working' : 'sop-finished'}`}>
+                            {alt.spk_status === 'ISSUED' ? 'SPK Diterbitkan' : 'Siap / Belum SPK'}
                           </span>
                         </td>
                       </tr>
