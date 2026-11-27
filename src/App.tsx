@@ -56,23 +56,80 @@ const DEFAULT_PAGE_BY_ROLE: Record<string, string> = {
   finance:     'beranda-direktur',
 };
 
+// ── Mapping Page ID <-> URL Path ────────────────────────────────
+const PAGE_TO_PATH: Record<string, string> = {
+  'beranda-direktur':   '/dashboard',
+  'dashboard':          '/dashboard',
+  'saw-dashboard':      '/saw',
+  'operational-logs':   '/saw/log-operasional',
+  'maintenance-orders': '/saw/spk',
+  'saw-weights':        '/saw/bobot',
+  'orders':             '/orders',
+  'surat-jalan':        '/surat-jalan',
+  'surat-jalan-admin':  '/surat-jalan',
+  'units':              '/units',
+  'customers':          '/customers',
+  'users':              '/users',
+};
+
+const PATH_TO_PAGE: Record<string, string> = {
+  '/dashboard':           'beranda-direktur',
+  '/saw':                 'saw-dashboard',
+  '/saw/log-operasional': 'operational-logs',
+  '/saw/spk':             'maintenance-orders',
+  '/saw/bobot':           'saw-weights',
+  '/orders':              'orders',
+  '/surat-jalan':         'surat-jalan',
+  '/units':               'units',
+  '/customers':           'customers',
+  '/users':               'users',
+};
+
 // ── AppContent ────────────────────────────────────────────────
 const AppContent: React.FC = () => {
   const { isAuthenticated, isLoading, user } = useAuth();
 
-  // Tentukan halaman awal berdasarkan role user
-  const defaultPage = user?.role ? (DEFAULT_PAGE_BY_ROLE[user.role] ?? 'dashboard') : 'dashboard';
-  const [currentPage, setCurrentPage] = useState<string>(defaultPage);
+  // Tentukan halaman awal berdasarkan URL path atau role user
+  const defaultPage = user?.role ? (DEFAULT_PAGE_BY_ROLE[user.role] ?? 'beranda-direktur') : 'beranda-direktur';
+  const getInitialPage = () => {
+    const path = window.location.pathname.replace(/\/+$/, '') || '/';
+    return PATH_TO_PAGE[path] ?? defaultPage;
+  };
+  const [currentPage, setCurrentPage] = useState<string>(getInitialPage);
 
-  // Saat user berhasil login atau role berubah, otomatis arahkan ke halaman utama sesuai role
+  // Sinkronkan URL saat user berhasil login atau role berubah
   React.useEffect(() => {
-    if (user?.role && DEFAULT_PAGE_BY_ROLE[user.role]) {
-      setCurrentPage(DEFAULT_PAGE_BY_ROLE[user.role]);
+    if (!isAuthenticated || !user?.role) return;
+    const path = window.location.pathname.replace(/\/+$/, '') || '/';
+    if (path === '/' || path === '/login' || !PATH_TO_PAGE[path]) {
+      const targetPage = DEFAULT_PAGE_BY_ROLE[user.role] ?? 'beranda-direktur';
+      setCurrentPage(targetPage);
+      window.history.replaceState({ page: targetPage }, '', PAGE_TO_PATH[targetPage] || '/dashboard');
+    } else {
+      setCurrentPage(PATH_TO_PAGE[path]);
     }
-  }, [user?.role]);
+  }, [isAuthenticated, user?.role]);
 
-  // Saat user memilih menu secara manual
-  const handleSetCurrentPage = (page: string) => setCurrentPage(page);
+  // Dengarkan tombol Back/Forward browser
+  React.useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname.replace(/\/+$/, '') || '/';
+      if (PATH_TO_PAGE[path]) {
+        setCurrentPage(PATH_TO_PAGE[path]);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Saat user memilih menu secara manual, update state dan URL browser
+  const handleSetCurrentPage = (page: string) => {
+    setCurrentPage(page);
+    const targetPath = PAGE_TO_PATH[page] || '/dashboard';
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState({ page }, '', targetPath);
+    }
+  };
 
   // ── Loading saat cek sesi ──
   if (isLoading) return <LoadingScreen />;
