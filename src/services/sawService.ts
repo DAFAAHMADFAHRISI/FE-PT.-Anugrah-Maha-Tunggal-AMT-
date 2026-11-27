@@ -35,8 +35,9 @@ export interface SPKMaintenanceInput {
 
 export const sawService = {
   // 1. Rekomendasi Prioritas Servis Terkini (GET /api/v1/saw/ranking)
-  async getLatestRanking(): Promise<SAWCalculationResult> {
-    const res = await api.get('/saw/ranking');
+  async getLatestRanking(year?: string): Promise<SAWCalculationResult> {
+    const params = year && year !== 'ALL' ? { year } : undefined;
+    const res = await api.get('/saw/ranking', { params });
     return res.data.data;
   },
 
@@ -59,8 +60,10 @@ export const sawService = {
   },
 
   // 5. Riwayat Snapshot Ranking (GET /api/v1/saw/history)
-  async getRankingHistory(limit = 10): Promise<HasilRanking[]> {
-    const res = await api.get('/saw/history', { params: { limit } });
+  async getRankingHistory(limit = 10, year?: string): Promise<HasilRanking[]> {
+    const params: Record<string, any> = { limit };
+    if (year && year !== 'ALL') params.year = year;
+    const res = await api.get('/saw/history', { params });
     return res.data.data;
   },
 
